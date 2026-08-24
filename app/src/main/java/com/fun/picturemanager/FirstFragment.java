@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,11 +25,15 @@ import com.fun.picturemanager.databinding.FragmentFirstBinding;
 
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Objects;
 
 public class FirstFragment extends Fragment {
+
+    private static final String CMD_FILE_PATH = "/data/local/tmp/camera_cmd.txt";
 
     private FragmentFirstBinding binding;
 
@@ -49,6 +55,9 @@ public class FirstFragment extends Fragment {
 
 
     private boolean lastAA = false;
+
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
 
 
@@ -90,6 +99,8 @@ public class FirstFragment extends Fragment {
 
         enableSwitch =
                 binding.enableSwitch;
+
+        preloadConfig();
 
 
 
@@ -146,6 +157,136 @@ public class FirstFragment extends Fragment {
         {
             e.printStackTrace();
         }
+
+    }
+
+
+    private void preloadConfig()
+    {
+
+        new Thread(() -> {
+
+            String json = readFile(CMD_FILE_PATH);
+
+            if(json==null)
+                return;
+
+            try {
+
+                JSONObject obj = new JSONObject(json);
+
+                boolean enable = obj.optBoolean("enable", false);
+                String imgPath = obj.optString("imgPath", null);
+                int width = obj.optInt("width", 0);
+                int height = obj.optInt("height", 0);
+
+                handler.post(() -> applyConfig(enable, imgPath, width, height));
+
+            }catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+
+        }).start();
+
+    }
+
+
+    private void applyConfig(
+            boolean enable,
+            String imgPath,
+            int width,
+            int height)
+    {
+
+        if(binding==null)
+            return;
+
+        enableSwitch.setChecked(enable);
+
+        if(width>0)
+            widthEdit.setText(String.valueOf(width));
+
+        if(height>0)
+            heightEdit.setText(String.valueOf(height));
+
+        if(imgPath!=null && !imgPath.isEmpty())
+            loadImageFromFile(imgPath);
+
+    }
+
+
+    private String readFile(String path)
+    {
+
+        File f = new File(path);
+
+        if(!f.exists() || !f.canRead())
+            return null;
+
+        try (FileInputStream fis = new FileInputStream(f)) {
+
+            byte[] data = new byte[(int) f.length()];
+
+            int n = fis.read(data);
+
+            return n<=0 ? null : new String(data, 0, n, "UTF-8");
+
+        }catch(Exception e)
+        {
+            return null;
+        }
+
+    }
+
+
+    private void loadImageFromFile(String path)
+    {
+
+        File f = new File(path);
+
+        if(!f.exists() || !f.canRead())
+            return;
+
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inJustDecodeBounds = true;
+
+        try (FileInputStream fis = new FileInputStream(f)) {
+            BitmapFactory.decodeStream(fis, null, opts);
+        }catch(Exception e)
+        {
+            return;
+        }
+
+        int sample = 1;
+        int maxDim = 1920;
+
+        while(opts.outWidth / sample > maxDim
+                || opts.outHeight / sample > maxDim)
+        {
+            sample *= 2;
+        }
+
+        opts.inJustDecodeBounds = false;
+        opts.inSampleSize = sample;
+
+        Bitmap bmp = null;
+
+        try (FileInputStream fis = new FileInputStream(f)) {
+            bmp = BitmapFactory.decodeStream(fis, null, opts);
+        }catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        if(bmp==null)
+            return;
+
+        bitmap = bmp;
+
+        imgUri = Uri.fromFile(f);
+
+        imageView.setImageBitmap(bitmap);
 
     }
 
@@ -361,8 +502,8 @@ public class FirstFragment extends Fragment {
             String cmd =
                     "echo "
                             + base64
-                            + " | base64 -d > /data/local/tmp/camera_cmd.txt;"
-                            +"chmod 666 /data/local/tmp/camera_cmd.txt";
+                            + " | base64 -d > " + CMD_FILE_PATH + ";"
+                            +"chmod 666 " + CMD_FILE_PATH;
 
 
 
@@ -400,7 +541,7 @@ public class FirstFragment extends Fragment {
 
             FileOutputStream fos =
                     new FileOutputStream(
-                            "/data/local/tmp/camera_cmd.txt");
+                            CMD_FILE_PATH);
 
 
             fos.write(
