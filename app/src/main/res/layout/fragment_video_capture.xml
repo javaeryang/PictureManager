@@ -17,6 +17,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <TextView
+            android:id="@+id/videoInfoText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:gravity="center"
+            android:text="请选择视频"
+            android:textColor="#333333"
+            android:textSize="14sp" />
+
 
         <VideoView
             android:id="@+id/videoView"
@@ -33,20 +43,78 @@
 
 
 
-        <SeekBar
-            android:id="@+id/seekBar"
-            android:layout_marginTop="25dp"
-            android:layout_marginBottom="25dp"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="50dp"/>
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/prevFrame"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:text="&lt;" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1">
+
+                <com.fun.picturemanager.TickMarkView
+                    android:id="@+id/tickMarkView"
+                    android:layout_width="match_parent"
+                    android:layout_height="15dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginEnd="14dp" />
+
+                <SeekBar
+                    android:id="@+id/seekBar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:splitTrack="false" />
+            </FrameLayout>
+
+            <Button
+                android:id="@+id/nextFrame"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:text="&gt;" />
+        </LinearLayout>
 
 
 
         <Button
             android:id="@+id/saveFrame"
-            android:text="保存截图"
+            android:text="保存当前截图"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/batchExport"
+            android:text="按帧率批量保存 (每秒1帧)"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
+        <ProgressBar
+            android:id="@+id/exportProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/exportStatusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="#666666"
+            android:visibility="gone" />
 
 
     </LinearLayout>
