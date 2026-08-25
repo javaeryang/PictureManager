@@ -63,7 +63,6 @@ public class VideoCaptureFragment extends Fragment {
 
                         if(uri!=null)
                         {
-
                             videoUri=uri;
 
                             playVideo();

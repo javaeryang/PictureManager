@@ -1,5 +1,6 @@
 package com.fun.picturemanager;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -29,6 +30,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
 import java.util.Objects;
 
 public class FirstFragment extends Fragment {
@@ -128,10 +132,35 @@ public class FirstFragment extends Fragment {
                         x->saveImage()
                 );
 
+        binding.dateManageBtn.setOnClickListener(v ->
+                NavHostFragment.findNavController(FirstFragment.this)
+                        .navigate(R.id.DateImageFragment)
+        );
+
+        binding.autoGetBtn.setOnClickListener(v -> autoGetTodayImage());
+
         binding.buttonFirst.setOnClickListener(v ->
                 NavHostFragment.findNavController(FirstFragment.this)
                         .navigate(R.id.action_FirstFragment_to_VideoCaptureFragment)
         );
+    }
+
+    private void autoGetTodayImage() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String today = sdf.format(Calendar.getInstance().getTime());
+
+        new Thread(() -> {
+            DateImage di = AppDatabase.getDatabase(requireContext()).dateImageDao().getByDate(today);
+            handler.post(() -> {
+                if (di != null && di.imagePath != null) {
+                    loadImage(Uri.parse(di.imagePath));
+                    Toast.makeText(getContext(), "已自动加载今日图片", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(), "今日未设置图片，请从相册选取", Toast.LENGTH_SHORT).show();
+                    picker.launch("image/*");
+                }
+            });
+        }).start();
     }
 
     private void loadImage(Uri uri)
@@ -141,17 +170,26 @@ public class FirstFragment extends Fragment {
 
             imgUri = uri;
 
-            InputStream is =
-                    requireContext()
-                            .getContentResolver()
-                            .openInputStream(uri);
+            InputStream is;
+            if (uri.getScheme() == null || "file".equals(uri.getScheme())) {
+                String path = uri.getPath();
+                if (path != null) {
+                    is = new FileInputStream(new File(path));
+                } else {
+                    is = requireContext().getContentResolver().openInputStream(uri);
+                }
+            } else {
+                is = requireContext().getContentResolver().openInputStream(uri);
+            }
 
+            if (is == null) return;
 
             bitmap =
                     BitmapFactory.decodeStream(is);
 
 
             imageView.setImageBitmap(bitmap);
+            is.close();
 
         }catch(Exception e)
         {

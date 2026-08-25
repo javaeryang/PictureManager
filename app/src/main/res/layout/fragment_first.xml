@@ -24,6 +24,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
 
+            <Button
+                android:id="@+id/dateManageBtn"
+                android:text="图片日期管理"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
             <ImageView
                 android:id="@+id/imageView"
                 android:layout_width="match_parent"
@@ -34,6 +40,12 @@
             <Button
                 android:id="@+id/selectBtn"
                 android:text="选择图片"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
+            <Button
+                android:id="@+id/autoGetBtn"
+                android:text="自动获取当日图片"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
 

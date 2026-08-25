@@ -32,4 +32,8 @@
         android:id="@+id/VideoCaptureFragment"
         android:name="com.fun.picturemanager.VideoCaptureFragment"
         android:label="Video Capture"/>
+    <fragment
+        android:id="@+id/DateImageFragment"
+        android:name="com.fun.picturemanager.DateImageFragment"
+        android:label="Date Image Management"/>
 </navigation>
