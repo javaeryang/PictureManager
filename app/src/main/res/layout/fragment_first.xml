@@ -18,36 +18,55 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <Button
-                android:id="@+id/button_first"
-                android:text="视频编辑页面"
+            <LinearLayout
+                android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content">
+                <Button
+                    android:id="@+id/button_first"
+                    android:text="视频编辑页面"
+                    android:layout_margin="5dp"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
 
-            <Button
-                android:id="@+id/dateManageBtn"
-                android:text="图片日期管理"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                <Button
+                    android:id="@+id/dateManageBtn"
+                    android:text="图片日期管理"
+                    android:layout_margin="5dp"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
 
             <ImageView
                 android:id="@+id/imageView"
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
+                android:layout_height="250dp"
                 android:scaleType="fitCenter"/>
 
-
-            <Button
-                android:id="@+id/selectBtn"
-                android:text="选择图片"
+            <LinearLayout
+                android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content">
+                <Button
+                    android:id="@+id/selectBtn"
+                    android:text="选择图片"
+                    android:layout_margin="5dp"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
 
-            <Button
-                android:id="@+id/autoGetBtn"
-                android:text="自动获取当日图片"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                <Button
+                    android:id="@+id/autoGetBtn"
+                    android:text="获取当日图片"
+                    android:layout_margin="5dp"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
 
             <LinearLayout
                 android:orientation="horizontal"
@@ -56,12 +75,14 @@
                 <Button
                     android:id="@+id/frontRotate"
                     android:text="前置"
+                    android:layout_margin="5dp"
                     android:layout_weight="1"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"/>
                 <Button
                     android:id="@+id/backendRotate"
                     android:text="后置"
+                    android:layout_margin="5dp"
                     android:layout_weight="1"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"/>
@@ -69,9 +90,17 @@
             <Button
                 android:id="@+id/rotateBtn"
                 android:text="旋转90度"
+                android:layout_margin="5dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
 
+            <Spinner
+                android:id="@+id/resolutionSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:padding="8dp"/>
 
             <EditText
                 android:id="@+id/widthEdit"
@@ -101,6 +130,7 @@
             <Button
                 android:id="@+id/saveBtn"
                 android:text="保存图片"
+                android:layout_margin="5dp"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
 

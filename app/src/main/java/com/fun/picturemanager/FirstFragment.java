@@ -1,6 +1,5 @@
 package com.fun.picturemanager;
 
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -11,6 +10,8 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Switch;
@@ -33,7 +34,6 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
-import java.util.Objects;
 
 public class FirstFragment extends Fragment {
 
@@ -103,6 +103,28 @@ public class FirstFragment extends Fragment {
 
         enableSwitch =
                 binding.enableSwitch;
+
+        String[] resolutions = {"自定义", "1280x720", "1920x1080"};
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, resolutions);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.resolutionSpinner.setAdapter(adapter);
+
+        binding.resolutionSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selected = resolutions[position];
+                if ("1280x720".equals(selected)) {
+                    widthEdit.setText("1280");
+                    heightEdit.setText("720");
+                } else if ("1920x1080".equals(selected)) {
+                    widthEdit.setText("1920");
+                    heightEdit.setText("1080");
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         preloadConfig();
 
