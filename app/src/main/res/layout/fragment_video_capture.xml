@@ -100,6 +100,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
 
+        <Button
+            android:id="@+id/saveEveryFrame"
+            android:text="保存视频每一帧"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
+
         <ProgressBar
             android:id="@+id/exportProgressBar"
             style="?android:attr/progressBarStyleHorizontal"

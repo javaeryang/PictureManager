@@ -29,7 +29,7 @@ public class VideoCaptureFragment extends Fragment {
 
     private SeekBar seekBar;
 
-    private Button prevFrame, nextFrame, batchExport;
+    private Button prevFrame, nextFrame, batchExport, saveEveryFrame;
 
     private ProgressBar exportProgressBar;
     private TextView exportStatusText;
@@ -109,6 +109,7 @@ public class VideoCaptureFragment extends Fragment {
         prevFrame = v.findViewById(R.id.prevFrame);
         nextFrame = v.findViewById(R.id.nextFrame);
         batchExport = v.findViewById(R.id.batchExport);
+        saveEveryFrame = v.findViewById(R.id.saveEveryFrame);
 
         exportProgressBar = v.findViewById(R.id.exportProgressBar);
         exportStatusText = v.findViewById(R.id.exportStatusText);
@@ -134,6 +135,7 @@ public class VideoCaptureFragment extends Fragment {
         prevFrame.setOnClickListener(v1 -> stepFrame(-1));
         nextFrame.setOnClickListener(v1 -> stepFrame(1));
         batchExport.setOnClickListener(v1 -> batchExport( (int)fps ));
+        saveEveryFrame.setOnClickListener(v1 -> batchExport(1));
 
 
 
@@ -360,6 +362,7 @@ public class VideoCaptureFragment extends Fragment {
         exportStatusText.setVisibility(View.VISIBLE);
         exportProgressBar.setProgress(0);
         batchExport.setEnabled(false);
+        saveEveryFrame.setEnabled(false);
 
         int totalToExport = 0;
         for (int i = 0; i < totalFrames; i += interval) totalToExport++;
@@ -418,6 +421,7 @@ public class VideoCaptureFragment extends Fragment {
         exportProgressBar.setVisibility(View.GONE);
         exportStatusText.setVisibility(View.GONE);
         batchExport.setEnabled(true);
+        saveEveryFrame.setEnabled(true);
     }
 
 
