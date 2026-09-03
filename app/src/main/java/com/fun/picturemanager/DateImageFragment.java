@@ -266,8 +266,21 @@ public class DateImageFragment extends Fragment {
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             DateItem item = items.get(position);
             holder.dateText.setText(item.date);
+
+            holder.checkBox.setOnCheckedChangeListener(null);
             holder.checkBox.setChecked(item.selected);
-            holder.checkBox.setOnCheckedChangeListener((buttonView, isChecked) -> item.selected = isChecked);
+
+            View.OnClickListener checkListener = v -> {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos < items.size()) {
+                    DateItem dateItem = items.get(pos);
+                    dateItem.selected = !dateItem.selected;
+                    holder.checkBox.setChecked(dateItem.selected);
+                }
+            };
+
+            holder.checkBox.setOnClickListener(checkListener);
+            holder.itemView.setOnClickListener(checkListener);
 
             if (item.imagePath != null) {
                 try {
@@ -285,19 +298,42 @@ public class DateImageFragment extends Fragment {
             }
 
             holder.imageView.setOnClickListener(v -> {
-                if (item.imagePath != null) {
-                    showPreview(item.imagePath);
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos < items.size()) {
+                    DateItem dateItem = items.get(pos);
+                    if (dateItem.imagePath != null) {
+                        showPreview(dateItem.imagePath);
+                    }
                 }
             });
 
             holder.changeBtn.setOnClickListener(v -> {
-                currentEditingDate = item.date;
-                singlePicker.launch("image/*");
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos < items.size()) {
+                    DateItem dateItem = items.get(pos);
+                    currentEditingDate = dateItem.date;
+                    singlePicker.launch("image/*");
+                }
             });
 
             holder.deleteBtn.setOnClickListener(v -> {
-                deleteDateImage(item.date);
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos < items.size()) {
+                    DateItem dateItem = items.get(pos);
+                    deleteDateImage(dateItem.date);
+                }
             });
+        }
+
+        @Override
+        public void onViewRecycled(@NonNull ViewHolder holder) {
+            super.onViewRecycled(holder);
+            holder.checkBox.setOnCheckedChangeListener(null);
+            holder.checkBox.setOnClickListener(null);
+            holder.itemView.setOnClickListener(null);
+            holder.imageView.setOnClickListener(null);
+            holder.changeBtn.setOnClickListener(null);
+            holder.deleteBtn.setOnClickListener(null);
         }
 
         @Override
