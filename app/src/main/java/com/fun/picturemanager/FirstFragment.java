@@ -3,7 +3,12 @@ package com.fun.picturemanager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,9 +37,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class FirstFragment extends Fragment {
 
@@ -63,6 +71,7 @@ public class FirstFragment extends Fragment {
 
     private String currentType = "image";
     private Uri selectedVideoUri;
+    private int videoRotationAngle = 0;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
@@ -163,17 +172,34 @@ public class FirstFragment extends Fragment {
         );
 
         binding.frontRotate.setOnClickListener(view1 -> {
-            loadImage(imgUri);
-            rotateImage(90);
+            videoRotationAngle = 90;
+            if ("video".equals(currentType)) {
+                Toast.makeText(getContext(), "视频旋转角度设置为: 90度", Toast.LENGTH_SHORT).show();
+            } else {
+                loadImage(imgUri);
+                rotateImage(90);
+            }
         });
         binding.backendRotate.setOnClickListener(view1 -> {
-            loadImage(imgUri);
-            rotateImage(270);
+            videoRotationAngle = 270;
+            if ("video".equals(currentType)) {
+                Toast.makeText(getContext(), "视频旋转角度设置为: 270度", Toast.LENGTH_SHORT).show();
+            } else {
+                loadImage(imgUri);
+                rotateImage(270);
+            }
         });
 
         binding.rotateBtn
                 .setOnClickListener(
-                        x-> rotateImage(rotate)
+                        x-> {
+                            videoRotationAngle = (videoRotationAngle + (int) rotate) % 360;
+                            if ("video".equals(currentType)) {
+                                Toast.makeText(getContext(), "视频旋转角度设置为: " + videoRotationAngle + "度", Toast.LENGTH_SHORT).show();
+                            } else {
+                                rotateImage(rotate);
+                            }
+                        }
                 );
 
 
@@ -455,17 +481,33 @@ public class FirstFragment extends Fragment {
         } catch (Exception ignored) {}
 
         String rootVideoPath = "/data/local/tmp/test.mp4";
+        String localPath = requireContext().getFilesDir().getAbsolutePath() + "/test.mp4";
+        File localFile = new File(localPath);
 
         if (selectedVideoUri != null) {
             try {
-                String localPath = requireContext().getFilesDir().getAbsolutePath() + "/test.mp4";
-                File localFile = new File(localPath);
-                if (copyUriToFile(selectedVideoUri, localFile)) {
-                    rootCopy(localPath, rootVideoPath);
-                }
+                copyUriToFile(selectedVideoUri, localFile);
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+
+        File targetToCopy = localFile;
+
+        if (localFile.exists() && videoRotationAngle != 0) {
+            String rotatedPath = requireContext().getFilesDir().getAbsolutePath() + "/test_rotated.mp4";
+            File rotatedFile = new File(rotatedPath);
+            try {
+                applyVideoRotation(localFile, rotatedFile, videoRotationAngle);
+                targetToCopy = rotatedFile;
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(getContext(), "视频旋转处理失败，将使用原视频: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        if (targetToCopy.exists()) {
+            rootCopy(targetToCopy.getAbsolutePath(), rootVideoPath);
         }
 
         try {
@@ -481,15 +523,92 @@ public class FirstFragment extends Fragment {
 
             rootWriteJson(jsonObject.toString());
 
+            String toastMsg = "保存视频配置成功:\n" + rootVideoPath;
+            if (videoRotationAngle != 0) {
+                toastMsg += " (已旋转 " + videoRotationAngle + "度)";
+            }
             Toast.makeText(
                             getContext(),
-                            "保存视频配置成功:\n" + rootVideoPath,
+                            toastMsg,
                             Toast.LENGTH_LONG)
                     .show();
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(getContext(), "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void applyVideoRotation(File inputFile, File outputFile, int degrees) throws Exception {
+        MediaExtractor extractor = new MediaExtractor();
+        extractor.setDataSource(inputFile.getAbsolutePath());
+
+        MediaMuxer muxer = new MediaMuxer(outputFile.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+        muxer.setOrientationHint(degrees);
+
+        int trackCount = extractor.getTrackCount();
+        Map<Integer, Integer> indexMap = new HashMap<>(trackCount);
+        int maxBufferSize = -1;
+
+        for (int i = 0; i < trackCount; i++) {
+            MediaFormat format = extractor.getTrackFormat(i);
+            String mime = format.containsKey(MediaFormat.KEY_MIME) ? format.getString(MediaFormat.KEY_MIME) : null;
+            if (mime != null && (mime.startsWith("video/") || mime.startsWith("audio/"))) {
+                extractor.selectTrack(i);
+                int dstIndex = muxer.addTrack(format);
+                indexMap.put(i, dstIndex);
+
+                if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                    int newSize = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE);
+                    maxBufferSize = Math.max(maxBufferSize, newSize);
+                }
+            }
+        }
+
+        if (maxBufferSize < 0) {
+            maxBufferSize = 1024 * 1024;
+        }
+
+        muxer.start();
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(maxBufferSize);
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+        while (true) {
+            int trackIndex = extractor.getSampleTrackIndex();
+            if (trackIndex < 0) {
+                break;
+            }
+
+            bufferInfo.offset = 0;
+            bufferInfo.size = extractor.readSampleData(buffer, 0);
+            if (bufferInfo.size < 0) {
+                break;
+            }
+
+            bufferInfo.presentationTimeUs = extractor.getSampleTime();
+            int sampleFlags = extractor.getSampleFlags();
+            int codecFlags = 0;
+            if ((sampleFlags & MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                codecFlags |= MediaCodec.BUFFER_FLAG_KEY_FRAME;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if ((sampleFlags & MediaExtractor.SAMPLE_FLAG_PARTIAL_FRAME) != 0) {
+                    codecFlags |= MediaCodec.BUFFER_FLAG_PARTIAL_FRAME;
+                }
+            }
+            bufferInfo.flags = codecFlags;
+
+            Integer dstTrackIndex = indexMap.get(trackIndex);
+            if (dstTrackIndex != null) {
+                muxer.writeSampleData(dstTrackIndex, buffer, bufferInfo);
+            }
+
+            extractor.advance();
+        }
+
+        muxer.stop();
+        muxer.release();
+        extractor.release();
     }
 
     private void saveImageConfig()
