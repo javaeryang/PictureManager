@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -60,10 +61,22 @@ public class FirstFragment extends Fragment {
 
     private boolean lastAA = false;
 
+    private String currentType = "image";
+    private Uri selectedVideoUri;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-
+    private final ActivityResultLauncher<String> videoPicker =
+            registerForActivityResult(
+                    new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) {
+                            selectedVideoUri = uri;
+                            currentType = "video";
+                            updateTypeUI();
+                            Toast.makeText(getContext(), "已选择视频，已切换为视频模式", Toast.LENGTH_SHORT).show();
+                        }
+                    });
 
     ActivityResultLauncher<String> picker =
             registerForActivityResult(
@@ -72,6 +85,8 @@ public class FirstFragment extends Fragment {
 
                         if(uri!=null)
                         {
+                            currentType = "image";
+                            updateTypeUI();
                             loadImage(uri);
                             rotateImage();
                         }
@@ -128,12 +143,25 @@ public class FirstFragment extends Fragment {
 
         preloadConfig();
 
-
+        binding.typeSwitchBtn.setOnClickListener(v -> {
+            if ("image".equals(currentType)) {
+                currentType = "video";
+            } else {
+                currentType = "image";
+            }
+            updateTypeUI();
+            Toast.makeText(getContext(), "已切换类型为: " + ("video".equals(currentType) ? "视频" : "图片"), Toast.LENGTH_SHORT).show();
+        });
 
         binding.selectBtn
                 .setOnClickListener(
                         x-> picker.launch("image/*")
                 );
+
+        binding.selectVideoBtn.setOnClickListener(
+                x -> videoPicker.launch("video/*")
+        );
+
         binding.frontRotate.setOnClickListener(view1 -> {
             loadImage(imgUri);
             rotateImage(90);
@@ -221,6 +249,15 @@ public class FirstFragment extends Fragment {
     }
 
 
+    private void updateTypeUI() {
+        if (binding == null) return;
+        if ("video".equals(currentType)) {
+            binding.typeSwitchBtn.setText("当前类型：视频 (点击切换)");
+        } else {
+            binding.typeSwitchBtn.setText("当前类型：图片 (点击切换)");
+        }
+    }
+
     private void preloadConfig()
     {
 
@@ -235,12 +272,14 @@ public class FirstFragment extends Fragment {
 
                 JSONObject obj = new JSONObject(json);
 
+                String type = obj.optString("type", "image");
                 boolean enable = obj.optBoolean("enable", false);
                 String imgPath = obj.optString("imgPath", null);
+                String videoPath = obj.optString("videoPath", null);
                 int width = obj.optInt("width", 0);
                 int height = obj.optInt("height", 0);
 
-                handler.post(() -> applyConfig(enable, imgPath, width, height));
+                handler.post(() -> applyConfig(type, enable, imgPath, videoPath, width, height));
 
             }catch(Exception e)
             {
@@ -253,14 +292,23 @@ public class FirstFragment extends Fragment {
 
 
     private void applyConfig(
+            String type,
             boolean enable,
             String imgPath,
+            String videoPath,
             int width,
             int height)
     {
 
         if(binding==null)
             return;
+
+        if ("video".equals(type)) {
+            currentType = "video";
+        } else {
+            currentType = "image";
+        }
+        updateTypeUI();
 
         enableSwitch.setChecked(enable);
 
@@ -270,7 +318,7 @@ public class FirstFragment extends Fragment {
         if(height>0)
             heightEdit.setText(String.valueOf(height));
 
-        if(imgPath!=null && !imgPath.isEmpty())
+        if("image".equals(currentType) && imgPath!=null && !imgPath.isEmpty())
             loadImageFromFile(imgPath);
 
     }
@@ -391,11 +439,68 @@ public class FirstFragment extends Fragment {
 
     private void saveImage()
     {
+        if ("video".equals(currentType)) {
+            saveVideoConfig();
+        } else {
+            saveImageConfig();
+        }
+    }
+
+    private void saveVideoConfig() {
+        int w = 1920;
+        int h = 1080;
+        try {
+            w = Integer.parseInt(widthEdit.getText().toString());
+            h = Integer.parseInt(heightEdit.getText().toString());
+        } catch (Exception ignored) {}
+
+        String rootVideoPath = "/data/local/tmp/test.mp4";
+
+        if (selectedVideoUri != null) {
+            try {
+                String localPath = requireContext().getFilesDir().getAbsolutePath() + "/test.mp4";
+                File localFile = new File(localPath);
+                if (copyUriToFile(selectedVideoUri, localFile)) {
+                    rootCopy(localPath, rootVideoPath);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("type", "video");
+            jsonObject.put("videoPath", rootVideoPath);
+            jsonObject.put("width", w);
+            jsonObject.put("height", h);
+            jsonObject.put("fps", 30);
+            jsonObject.put("loop", true);
+            jsonObject.put("queueSize", 30);
+            jsonObject.put("enable", enableSwitch.isChecked());
+
+            rootWriteJson(jsonObject.toString());
+
+            Toast.makeText(
+                            getContext(),
+                            "保存视频配置成功:\n" + rootVideoPath,
+                            Toast.LENGTH_LONG)
+                    .show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void saveImageConfig()
+    {
 
 
         if(bitmap==null)
+        {
+            Toast.makeText(getContext(), "请先选择图片", Toast.LENGTH_SHORT).show();
             return;
-
+        }
 
 
         int w =
@@ -468,29 +573,21 @@ public class FirstFragment extends Fragment {
 
             // 写配置文件
             JSONObject jsonObject = new JSONObject();
-            jsonObject.put("enable", enableSwitch.isChecked());
+            jsonObject.put("type", "image");
             jsonObject.put("imgPath", rootPath);
             jsonObject.put("width", w);
             jsonObject.put("height", h);
+            jsonObject.put("enable", enableSwitch.isChecked());
             rootWriteJson(jsonObject.toString());
 
 
 
             Toast.makeText(
                             getContext(),
-                            "保存成功:"
+                            "保存图片配置成功:"
                                     +rootPath,
                             Toast.LENGTH_LONG)
                     .show();
-
-
-
-            Toast.makeText(
-                            getContext(),
-                            "保存:"+path,
-                            Toast.LENGTH_LONG)
-                    .show();
-
 
 
         }catch(Exception e)
@@ -498,6 +595,23 @@ public class FirstFragment extends Fragment {
             e.printStackTrace();
         }
 
+    }
+
+    private boolean copyUriToFile(Uri uri, File destFile) {
+        try (InputStream is = requireContext().getContentResolver().openInputStream(uri);
+             FileOutputStream fos = new FileOutputStream(destFile)) {
+            if (is == null) return false;
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) > 0) {
+                fos.write(buffer, 0, len);
+            }
+            fos.flush();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     private void rootCopy(
@@ -551,10 +665,10 @@ public class FirstFragment extends Fragment {
 
             // base64编码避免shell特殊字符
             String base64 =
-                    android.util.Base64
+                    Base64
                             .encodeToString(
                                     json.getBytes("UTF-8"),
-                                    android.util.Base64.NO_WRAP
+                                    Base64.NO_WRAP
                             );
 
 

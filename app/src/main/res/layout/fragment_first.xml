@@ -46,6 +46,13 @@
                 android:layout_height="250dp"
                 android:scaleType="fitCenter"/>
 
+            <Button
+                android:id="@+id/typeSwitchBtn"
+                android:text="当前类型：图片 (点击切换)"
+                android:layout_margin="5dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+
             <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
@@ -53,6 +60,14 @@
                 <Button
                     android:id="@+id/selectBtn"
                     android:text="选择图片"
+                    android:layout_margin="5dp"
+                    android:layout_weight="1"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"/>
+
+                <Button
+                    android:id="@+id/selectVideoBtn"
+                    android:text="选择视频"
                     android:layout_margin="5dp"
                     android:layout_weight="1"
                     android:layout_width="0dp"
