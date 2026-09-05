@@ -16,6 +16,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -28,7 +31,9 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.core.view.MenuProvider;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Lifecycle;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.fun.picturemanager.databinding.FragmentFirstBinding;
@@ -211,17 +216,29 @@ public class FirstFragment extends Fragment {
                         x->saveImage()
                 );
 
-        binding.dateManageBtn.setOnClickListener(v ->
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.DateImageFragment)
-        );
+        requireActivity().addMenuProvider(new MenuProvider() {
+            @Override
+            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater menuInflater) {
+                menuInflater.inflate(R.menu.menu_first, menu);
+            }
+
+            @Override
+            public boolean onMenuItemSelected(@NonNull MenuItem menuItem) {
+                int id = menuItem.getItemId();
+                if (id == R.id.action_video_edit) {
+                    NavHostFragment.findNavController(FirstFragment.this)
+                            .navigate(R.id.action_FirstFragment_to_VideoCaptureFragment);
+                    return true;
+                } else if (id == R.id.action_date_manage) {
+                    NavHostFragment.findNavController(FirstFragment.this)
+                            .navigate(R.id.DateImageFragment);
+                    return true;
+                }
+                return false;
+            }
+        }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
 
         binding.autoGetBtn.setOnClickListener(v -> autoGetTodayImage());
-
-        binding.buttonFirst.setOnClickListener(v ->
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.action_FirstFragment_to_VideoCaptureFragment)
-        );
     }
 
     private void autoGetTodayImage() {

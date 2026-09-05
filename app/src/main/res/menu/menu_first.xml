@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_video_edit"
+        android:orderInCategory="10"
+        android:title="视频编辑页面"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_date_manage"
+        android:orderInCategory="20"
+        android:title="图片日期管理"
+        app:showAsAction="never" />
+</menu>
