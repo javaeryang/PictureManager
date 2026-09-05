@@ -1,7 +1,9 @@
 package com.fun.picturemanager;
 
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
@@ -68,6 +70,7 @@ public class FirstFragment extends Fragment {
 
 
     private boolean lastAA = false;
+    private boolean lastVideo = false;
 
     private String currentType = "image";
     private Uri selectedVideoUri;
@@ -277,11 +280,37 @@ public class FirstFragment extends Fragment {
 
     private void updateTypeUI() {
         if (binding == null) return;
-        if ("video".equals(currentType)) {
-            binding.typeSwitchBtn.setText("当前类型：视频 (点击切换)");
+
+        boolean isVideo = "video".equals(currentType);
+
+        if (isVideo) {
+            binding.typeSwitchBtn.setText("当前类型：视频 🎥 (点击切换为图片)");
+            binding.typeSwitchBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9C27B0")));
+            binding.saveBtn.setText("保存视频配置 🎥");
+            binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9C27B0")));
         } else {
-            binding.typeSwitchBtn.setText("当前类型：图片 (点击切换)");
+            binding.typeSwitchBtn.setText("当前类型：图片 🖼️ (点击切换为视频)");
+            binding.typeSwitchBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+            binding.saveBtn.setText("保存图片配置 🖼️");
+            binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
         }
+
+        boolean hasVideo = selectedVideoUri != null || checkLocalVideoExists();
+        if (hasVideo) {
+            binding.selectVideoBtn.setText("选择视频 (已选中 ✅)");
+            binding.selectVideoBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#2E7D32")));
+        } else {
+            binding.selectVideoBtn.setText("选择视频");
+            binding.selectVideoBtn.setBackgroundTintList(null);
+        }
+    }
+
+    private boolean checkLocalVideoExists() {
+        if (getContext() == null) return false;
+        File dir = getContext().getFilesDir();
+        return new File(dir, "test1.mp4").exists()
+                || new File(dir, "test2.mp4").exists()
+                || new File(dir, "test.mp4").exists();
     }
 
     private void preloadConfig()
@@ -344,8 +373,22 @@ public class FirstFragment extends Fragment {
         if(height>0)
             heightEdit.setText(String.valueOf(height));
 
-        if("image".equals(currentType) && imgPath!=null && !imgPath.isEmpty())
+        if (videoPath != null && !videoPath.isEmpty()) {
+            if (videoPath.contains("test1.mp4")) {
+                lastVideo = true;
+            } else if (videoPath.contains("test2.mp4")) {
+                lastVideo = false;
+            }
+        }
+
+        if("image".equals(currentType) && imgPath!=null && !imgPath.isEmpty()) {
+            if (imgPath.contains("aa.jpg")) {
+                lastAA = true;
+            } else if (imgPath.contains("bb.jpg")) {
+                lastAA = false;
+            }
             loadImageFromFile(imgPath);
+        }
 
     }
 
@@ -480,8 +523,11 @@ public class FirstFragment extends Fragment {
             h = Integer.parseInt(heightEdit.getText().toString());
         } catch (Exception ignored) {}
 
-        String rootVideoPath = "/data/local/tmp/test.mp4";
-        String localPath = requireContext().getFilesDir().getAbsolutePath() + "/test.mp4";
+        String videoTmpName = lastVideo ? "/test2.mp4" : "/test1.mp4";
+        lastVideo = !lastVideo;
+
+        String rootVideoPath = "/data/local/tmp" + videoTmpName;
+        String localPath = requireContext().getFilesDir().getAbsolutePath() + videoTmpName;
         File localFile = new File(localPath);
 
         if (selectedVideoUri != null) {
@@ -489,6 +535,13 @@ public class FirstFragment extends Fragment {
                 copyUriToFile(selectedVideoUri, localFile);
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        } else {
+            if (!localFile.exists()) {
+                File defaultLocal = new File(requireContext().getFilesDir(), "test.mp4");
+                if (defaultLocal.exists()) {
+                    localFile = defaultLocal;
+                }
             }
         }
 
