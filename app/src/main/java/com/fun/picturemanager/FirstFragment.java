@@ -136,6 +136,12 @@ public class FirstFragment extends Fragment {
         enableSwitch =
                 binding.enableSwitch;
 
+        enableSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (buttonView.isPressed()) {
+                saveEnableConfigImmediately(isChecked);
+            }
+        });
+
         String[] resolutions = {"自定义", "1280x720", "1920x1080"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item, resolutions);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -295,6 +301,48 @@ public class FirstFragment extends Fragment {
     }
 
 
+    private void saveEnableConfigImmediately(boolean isChecked) {
+        new Thread(() -> {
+            try {
+                String jsonStr = readFile(CMD_FILE_PATH);
+                JSONObject jsonObject;
+                if (jsonStr != null && !jsonStr.trim().isEmpty()) {
+                    jsonObject = new JSONObject(jsonStr);
+                } else {
+                    jsonObject = new JSONObject();
+                    jsonObject.put("type", currentType);
+                    if ("video".equals(currentType)) {
+                        jsonObject.put("videoPath", "/data/local/tmp/test1.mp4");
+                        jsonObject.put("fps", 30);
+                        jsonObject.put("loop", true);
+                        jsonObject.put("queueSize", 30);
+                    } else {
+                        jsonObject.put("imgPath", "/data/local/tmp/aa.jpg");
+                    }
+                    int w = 1920;
+                    int h = 1080;
+                    try {
+                        w = Integer.parseInt(widthEdit.getText().toString());
+                        h = Integer.parseInt(heightEdit.getText().toString());
+                    } catch (Exception ignored) {}
+                    jsonObject.put("width", w);
+                    jsonObject.put("height", h);
+                }
+
+                jsonObject.put("enable", isChecked);
+                rootWriteJson(jsonObject.toString());
+
+                handler.post(() -> {
+                    if (getContext() != null) {
+                        Toast.makeText(getContext(), "配置开关已更新: " + (isChecked ? "开启" : "关闭"), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     private void updateTypeUI() {
         if (binding == null) return;
 
@@ -382,7 +430,13 @@ public class FirstFragment extends Fragment {
         }
         updateTypeUI();
 
+        enableSwitch.setOnCheckedChangeListener(null);
         enableSwitch.setChecked(enable);
+        enableSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (buttonView.isPressed()) {
+                saveEnableConfigImmediately(isChecked);
+            }
+        });
 
         if(width>0)
             widthEdit.setText(String.valueOf(width));
