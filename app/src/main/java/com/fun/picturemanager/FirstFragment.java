@@ -124,14 +124,15 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        view.requestFocus();
 
         imageView = binding.imageView;
 
-
         widthEdit = binding.widthEdit;
-
-
         heightEdit = binding.heightEdit;
+
+        widthEdit.clearFocus();
+        heightEdit.clearFocus();
 
         enableSwitch =
                 binding.enableSwitch;
@@ -981,6 +982,16 @@ public class FirstFragment extends Fragment {
 
     }
 
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (binding != null) {
+            binding.getRoot().requestFocus();
+        }
+        if (widthEdit != null) widthEdit.clearFocus();
+        if (heightEdit != null) heightEdit.clearFocus();
+    }
 
     @Override
     public void onDestroyView() {
