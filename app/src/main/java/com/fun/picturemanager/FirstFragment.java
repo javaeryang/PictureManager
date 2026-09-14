@@ -19,8 +19,10 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -167,14 +169,38 @@ public class FirstFragment extends Fragment {
 
         preloadConfig();
 
-        binding.typeSwitchBtn.setOnClickListener(v -> {
-            if ("image".equals(currentType)) {
-                currentType = "video";
-            } else {
-                currentType = "image";
+        binding.tabImage.setOnClickListener(v -> switchType("image"));
+        binding.tabVideo.setOnClickListener(v -> switchType("video"));
+
+        binding.typeToggleContainer.setOnTouchListener(new View.OnTouchListener() {
+            private float startX;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startX = event.getX();
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        float endX = event.getX();
+                        float deltaX = endX - startX;
+                        if (Math.abs(deltaX) > 20) {
+                            if (deltaX > 0) {
+                                switchType("video");
+                            } else {
+                                switchType("image");
+                            }
+                        } else {
+                            if (endX < v.getWidth() / 2f) {
+                                switchType("image");
+                            } else {
+                                switchType("video");
+                            }
+                        }
+                        v.performClick();
+                        return true;
+                }
+                return false;
             }
-            updateTypeUI();
-            Toast.makeText(getContext(), "已切换类型为: " + ("video".equals(currentType) ? "视频" : "图片"), Toast.LENGTH_SHORT).show();
         });
 
         binding.selectBtn
@@ -344,22 +370,56 @@ public class FirstFragment extends Fragment {
         }).start();
     }
 
+    private void switchType(String newType) {
+        if (!newType.equals(currentType)) {
+            currentType = newType;
+            updateTypeUI();
+            Toast.makeText(getContext(), "已切换类型为: " + ("video".equals(currentType) ? "视频" : "图片"), Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void updateTypeUI() {
         if (binding == null) return;
 
         boolean isVideo = "video".equals(currentType);
 
-        if (isVideo) {
-            binding.typeSwitchBtn.setText("当前类型：视频 🎥 (点击切换为图片)");
-            binding.typeSwitchBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9C27B0")));
-            binding.saveBtn.setText("保存视频配置 🎥");
-            binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9C27B0")));
-        } else {
-            binding.typeSwitchBtn.setText("当前类型：图片 🖼️ (点击切换为视频)");
-            binding.typeSwitchBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
-            binding.saveBtn.setText("保存图片配置 🖼️");
-            binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
-        }
+        binding.typeToggleContainer.post(() -> {
+            if (binding == null) return;
+
+            int containerWidth = binding.typeToggleContainer.getWidth();
+            if (containerWidth <= 0) return;
+
+            int thumbWidth = (containerWidth / 2) - 6;
+            ViewGroup.LayoutParams lp = binding.typeToggleThumb.getLayoutParams();
+            if (lp.width != thumbWidth) {
+                lp.width = thumbWidth;
+                binding.typeToggleThumb.setLayoutParams(lp);
+            }
+
+            float targetX = isVideo ? (containerWidth / 2f) : 0f;
+
+            binding.typeToggleThumb.animate()
+                    .translationX(targetX)
+                    .setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .start();
+
+            if (isVideo) {
+                binding.typeToggleThumb.getBackground().setTint(Color.parseColor("#9C27B0"));
+                binding.tabImage.setTextColor(Color.parseColor("#666666"));
+                binding.tabVideo.setTextColor(Color.parseColor("#FFFFFF"));
+
+                binding.saveBtn.setText("保存视频配置 🎥");
+                binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#9C27B0")));
+            } else {
+                binding.typeToggleThumb.getBackground().setTint(Color.parseColor("#1976D2"));
+                binding.tabImage.setTextColor(Color.parseColor("#FFFFFF"));
+                binding.tabVideo.setTextColor(Color.parseColor("#666666"));
+
+                binding.saveBtn.setText("保存图片配置 🖼️");
+                binding.saveBtn.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#1976D2")));
+            }
+        });
 
         boolean hasVideo = selectedVideoUri != null || checkLocalVideoExists();
         if (hasVideo) {
