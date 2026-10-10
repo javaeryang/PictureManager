@@ -1,5 +1,7 @@
 package com.fun.picturemanager;
 
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -161,6 +164,7 @@ public class FirstFragment extends Fragment {
                     widthEdit.setText("1920");
                     heightEdit.setText("1080");
                 }
+                syncParamsToFloatManager();
             }
 
             @Override
@@ -214,6 +218,7 @@ public class FirstFragment extends Fragment {
 
         binding.frontRotate.setOnClickListener(view1 -> {
             videoRotationAngle = 90;
+            syncParamsToFloatManager();
             if ("video".equals(currentType)) {
                 Toast.makeText(getContext(), "视频旋转角度设置为: 90度", Toast.LENGTH_SHORT).show();
             } else {
@@ -223,6 +228,7 @@ public class FirstFragment extends Fragment {
         });
         binding.backendRotate.setOnClickListener(view1 -> {
             videoRotationAngle = 270;
+            syncParamsToFloatManager();
             if ("video".equals(currentType)) {
                 Toast.makeText(getContext(), "视频旋转角度设置为: 270度", Toast.LENGTH_SHORT).show();
             } else {
@@ -235,6 +241,7 @@ public class FirstFragment extends Fragment {
                 .setOnClickListener(
                         x-> {
                             videoRotationAngle = (videoRotationAngle + (int) rotate) % 360;
+                            syncParamsToFloatManager();
                             if ("video".equals(currentType)) {
                                 Toast.makeText(getContext(), "视频旋转角度设置为: " + videoRotationAngle + "度", Toast.LENGTH_SHORT).show();
                             } else {
@@ -266,12 +273,52 @@ public class FirstFragment extends Fragment {
                     NavHostFragment.findNavController(FirstFragment.this)
                             .navigate(R.id.DateImageFragment);
                     return true;
+                } else if (id == R.id.action_float_window) {
+                    toggleFloatWindow();
+                    return true;
                 }
                 return false;
             }
         }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
 
         binding.autoGetBtn.setOnClickListener(v -> autoGetTodayImage());
+    }
+
+    private void toggleFloatWindow() {
+        Context context = requireContext();
+        if (!Settings.canDrawOverlays(context)) {
+            Toast.makeText(context, "请先授予悬浮窗权限", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + context.getPackageName()));
+            startActivity(intent);
+            return;
+        }
+        syncParamsToFloatManager();
+
+        if (FloatWindowService.isRunning()) {
+            FloatWindowService.stopService(context);
+            Toast.makeText(context, "已关闭悬浮窗", Toast.LENGTH_SHORT).show();
+        } else {
+            FloatWindowService.startService(context);
+            Toast.makeText(context, "已开启悬浮窗", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void syncParamsToFloatManager() {
+        int w = 1920;
+        int h = 1080;
+        try {
+            w = Integer.parseInt(widthEdit.getText().toString());
+            h = Integer.parseInt(heightEdit.getText().toString());
+        } catch (Exception ignored) {}
+
+        FloatWindowManager.getInstance().setParams(
+                w,
+                h,
+                videoRotationAngle,
+                enableSwitch.isChecked(),
+                lastAA
+        );
     }
 
     private void autoGetTodayImage() {
@@ -1048,6 +1095,7 @@ public class FirstFragment extends Fragment {
         super.onResume();
         if (binding != null) {
             binding.getRoot().requestFocus();
+            syncParamsToFloatManager();
         }
         if (widthEdit != null) widthEdit.clearFocus();
         if (heightEdit != null) heightEdit.clearFocus();
