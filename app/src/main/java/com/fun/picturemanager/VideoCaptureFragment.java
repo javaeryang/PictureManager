@@ -15,8 +15,14 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
+import android.os.Environment;
+import android.media.MediaScannerConnection;
 
 
 
@@ -330,10 +336,16 @@ public class VideoCaptureFragment extends Fragment {
             try {
                 retriever.setDataSource(requireContext(), videoUri);
 
-                Bitmap bitmap;
+                Bitmap bitmap = null;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    bitmap = retriever.getFrameAtIndex((int) index);
-                } else {
+                    try {
+                        bitmap = retriever.getFrameAtIndex((int) index);
+                    } catch (IllegalStateException e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                if (bitmap == null) {
                     // Fallback: calculate time from index
                     long timeUs = (long) (index * 1000000.0 / fps);
                     bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST);
@@ -377,10 +389,16 @@ public class VideoCaptureFragment extends Fragment {
                 int count = 0;
                 int currentTaskIndex = 0;
                 for (int i = 0; i < totalFrames; i += interval) {
-                    Bitmap bitmap;
+                    Bitmap bitmap = null;
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        bitmap = retriever.getFrameAtIndex(i);
-                    } else {
+                        try {
+                            bitmap = retriever.getFrameAtIndex(i);
+                        } catch (IllegalStateException e) {
+                            // Some devices throw this at the end of the video
+                            e.printStackTrace();
+                        }
+                    }
+                    if (bitmap == null) {
                         long timeUs = (long) (i * 1000000.0 / fps);
                         bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST);
                     }
@@ -427,14 +445,44 @@ public class VideoCaptureFragment extends Fragment {
 
     private boolean saveBitmapToGallery(Bitmap bmp, String nameSuffix) {
         try {
-            ContentValues values = new ContentValues();
-            values.put(MediaStore.Images.Media.DISPLAY_NAME, "video_frame_" + nameSuffix + "_" + System.currentTimeMillis() + ".jpg");
-            values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                // Request permission if not granted
+                if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(requireActivity(),
+                            new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+                    return false;
+                }
 
-            Uri uri = requireContext().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-            if (uri != null) {
-                try (OutputStream os = requireContext().getContentResolver().openOutputStream(uri)) {
-                    return bmp.compress(Bitmap.CompressFormat.JPEG, 95, os);
+                // Legacy storage path for Android 9 and below
+                File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                if (!picturesDir.exists()) picturesDir.mkdirs();
+                
+                File imageFile = new File(picturesDir, "video_frame_" + nameSuffix + "_" + System.currentTimeMillis() + ".jpg");
+                try (OutputStream os = new FileOutputStream(imageFile)) {
+                    boolean success = bmp.compress(Bitmap.CompressFormat.JPEG, 95, os);
+                    if (success) {
+                        // Trigger media scanner to show image in gallery
+                        MediaScannerConnection.scanFile(requireContext(), new String[]{imageFile.getAbsolutePath()}, new String[]{"image/jpeg"}, null);
+                        return true;
+                    }
+                }
+            } else {
+                // Scoped Storage for Android 10+
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DISPLAY_NAME, "video_frame_" + nameSuffix + "_" + System.currentTimeMillis() + ".jpg");
+                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
+                
+                Uri uri = requireContext().getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+                if (uri != null) {
+                    try (OutputStream os = requireContext().getContentResolver().openOutputStream(uri)) {
+                        boolean success = bmp.compress(Bitmap.CompressFormat.JPEG, 95, os);
+                        values.clear();
+                        values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                        requireContext().getContentResolver().update(uri, values, null, null);
+                        return success;
+                    }
                 }
             }
         } catch (Exception e) {
